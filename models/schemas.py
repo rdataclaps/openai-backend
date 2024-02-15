@@ -27,7 +27,7 @@ class UserTrainingDataCreateSchema(BaseModel):
 
 
 class User(BaseModel):
-    id: int
+    id: uuid.UUID
     created_at: datetime
     updated_at: datetime
     email: str
