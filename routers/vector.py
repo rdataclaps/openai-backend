@@ -319,7 +319,7 @@ async def train(
         )
 
 
-@router.post("train/delete")
+@router.post("/train/delete")
 async def deletetxt(request: Request, data: dict, db: Session = Depends(get_db), authorize: AuthJWT = Depends()):
     authorize.jwt_required()
     current_user = authorize.get_jwt_subject()
