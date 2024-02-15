@@ -14,7 +14,7 @@ from fastapi_jwt_auth import AuthJWT
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from database import get_db
-
+from fastapi.responses import RedirectResponse
 from models.schemas import Login, Refresh, Register, Token, User
 from services import add_user, get_user, update_access_token
 from utils import generate_unique_uuid, get_email_body, get_email_from, get_email_subject, get_email_to, verify_password, get_email_date
@@ -28,6 +28,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
+DEBUG = os.getenv("debug",False)
 
 
 @router.get("/login/google")
@@ -57,7 +58,9 @@ async def auth_google(code: str):
         user_data = user_info.json()
         email = user_data.get('email')
         update_access_token(email=email, access_token=access_token,refresh_token=refresh_token)
-        return user_info.json()
+        if DEBUG:
+            return RedirectResponse('http://localhost:3000/dashboard')
+        return RedirectResponse('https://askmail.ai/dashboard')
     else:
         raise HTTPException(status_code=401, detail="Invalid Token")
 
