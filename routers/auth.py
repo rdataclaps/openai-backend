@@ -15,6 +15,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from database import get_db
 from fastapi.responses import RedirectResponse
+from models.users import UserCreditHistory
 from models.schemas import Login, Refresh, Register, Token, User
 from services import add_user, get_user, update_access_token
 from utils import generate_unique_uuid, get_email_body, get_email_from, get_email_subject, get_email_to, verify_password, get_email_date
@@ -39,7 +40,7 @@ async def login_google():
 
 
 @router.get("/auth/google")
-async def auth_google(code: str):
+async def auth_google(code: str, db: Session = Depends(get_db)):
     token_url = "https://accounts.google.com/o/oauth2/token"
     data = {
         "code": code,
@@ -58,6 +59,11 @@ async def auth_google(code: str):
         user_data = user_info.json()
         email = user_data.get('email')
         update_access_token(email=email, access_token=access_token,refresh_token=refresh_token)
+        db_user = get_user(email)
+        uch = db.query(UserCreditHistory).filter_by(user_id=db_user.id).first()
+        if uch:
+            uch.credit = 1.0
+            db.commit()
         if DEBUG:
             return RedirectResponse('http://localhost:3000/dashboard')
         return RedirectResponse('https://askmail.ai/dashboard')
@@ -71,11 +77,19 @@ async def get_token(token: str = Depends(oauth2_scheme)):
 
 
 @router.post("/login", response_model=Login)
-def login(user: Token, authorize: AuthJWT = Depends()):
+def login(user: Token, db: Session = Depends(get_db), authorize: AuthJWT = Depends()):
     if user.email and user.password:
         db_user = get_user(user.email)
         if db_user and verify_password(user.password, db_user.password):
-
+            uch = db.query(UserCreditHistory).filter_by(user_id=db_user.id).first()
+            if uch:
+                uch.credit = 0.0
+                db.commit()
+            else:
+                download_flag = UserCreditHistory(credit=0.0, user_id=db_user.id)
+                db.add(download_flag)
+                db.commit()
+                db.refresh(download_flag)
             access_token = authorize.create_access_token(subject=user.email)
             refresh_token = authorize.create_refresh_token(subject=user.email)
             return {
