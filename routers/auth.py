@@ -16,7 +16,7 @@ from googleapiclient.discovery import build
 from database import get_db
 from fastapi.responses import RedirectResponse
 from models.users import UserCreditHistory
-from models.schemas import Login, Refresh, Register, Token, User
+from models.schemas import Login, Refresh, Register, Token, User, UserResponse
 from services import add_user, get_user, update_access_token
 from utils import generate_unique_uuid, get_email_body, get_email_from, get_email_subject, get_email_to, verify_password, get_email_date
 
@@ -110,13 +110,18 @@ def refresh(authorize: AuthJWT = Depends()):
 
 
 #
-@router.get("/me", response_model=User)
-def protected(authorize: AuthJWT = Depends()):
+@router.get("/me",  response_model=UserResponse)
+def protected(db: Session = Depends(get_db), authorize: AuthJWT = Depends()):
     authorize.jwt_required()
 
     current_user = authorize.get_jwt_subject()
     user = get_user(current_user)
-    return User(**user.__dict__)
+    uch = db.query(UserCreditHistory).filter_by(user_id=user.id).first()
+    if uch:
+        flag = bool(uch.credit)
+    else:
+        flag = False
+    return UserResponse(**user.__dict__, download_flag=flag)
 
 
 @router.post("/register", response_model=User)

@@ -33,6 +33,14 @@ class User(BaseModel):
     email: str
 
 
+class UserResponse(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+    email: str
+    download_flag: bool 
+
+
 class Register(BaseModel):
     password: str
     email: str
